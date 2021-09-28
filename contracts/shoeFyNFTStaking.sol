@@ -510,11 +510,6 @@ contract ShoeFyNFTStaking is Ownable {
 	}
 	
 	
-	function transferNFT(address _target, uint256 tokenId) public {
-        shoeFyNFT.transferFrom(msg.sender, _target, tokenId);
-        emit Transfer(msg.sender, _target, tokenId);
-	}
-	
 	function removeAssetFromArray(address _guy, uint256 tokenId) internal {
       
       Library.data memory index = indexOfAssets[_guy][tokenId];

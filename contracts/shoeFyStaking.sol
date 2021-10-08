@@ -335,8 +335,7 @@ contract ShoeFyStaking is Ownable {
     
     IERC20 public shoeFy;
 
-    uint256 minAPR = 103;
-    uint256 maxAPR = 1000;
+    uint256 initialAPR = 20000;
     
     uint256 apr;
     uint256 stakeDelay;
@@ -352,9 +351,9 @@ contract ShoeFyStaking is Ownable {
     mapping(address => uint256) private currentReward;
     mapping(address => uint256) private lastPendingReward;
     
-    address private liquidityLocker = 0x0000000000000000000000000000000000000000;
-    address private daoTreasury = 0x0000000000000000000000000000000000000000;
-    address public burnAddress = 0x0000000000000000000000000000000000000000;
+    address private liquidityLocker = 0x000000000000000000000000000000000000dEaD;
+    address private daoTreasury = 0x000000000000000000000000000000000000dEaD;
+    address public burnAddress = 0x000000000000000000000000000000000000dEaD;
     
     uint256 public burnFee = 1;
     uint256 public rewardFee = 1;
@@ -363,7 +362,7 @@ contract ShoeFyStaking is Ownable {
 
 
     uint256 totalStakedAmount;
-    uint256 public totalUser;
+    uint256 public totalUsers;
 
 
     event Deposit(address indexed user, uint256 amount);
@@ -377,8 +376,9 @@ contract ShoeFyStaking is Ownable {
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 
     constructor() public {
-        shoeFy = IERC20 (0x8d9d3a7e26b397d3B3901b3f545A0c3776021Dff);
-        apr = maxAPR + minAPR;
+        shoeFy = IERC20 (0xfBA067325d5F679D89f2933f4eA4c0158389455a);
+        apr = initialAPR;
+        totalUsers = 0;
     }
 
     function stakedBalanceOf(address _guy) public view returns (uint256) {
@@ -399,19 +399,24 @@ contract ShoeFyStaking is Ownable {
 			stakingUsers.push(msg.sender);
 			_hasStaked[msg.sender] = true;
 		}
+		
+		if(allowed[address(this)][msg.sender] == 0){
+		    totalUsers = totalUsers + 1;
+		}
 
 		require(_amount > 0, "Amount shall be positive... who wants negative interests ?");
 		userApr[msg.sender] = apr;
-        shoeFy.transferFrom(msg.sender, address(this), _amount.mul(100 - burnFee - daoFee - liquidityFee).div(100));
+        shoeFy.transferFrom(msg.sender, address(this), _amount);
 		allowed[address(this)][msg.sender] += _amount.mul(100 - burnFee - daoFee - liquidityFee - rewardFee).div(100);
 		// transfer fee 
-		shoeFy.transferFrom(msg.sender, burnAddress, _amount.mul(burnFee).div(100));
-		shoeFy.transferFrom(msg.sender, daoTreasury, _amount.mul(daoFee).div(100));
-		shoeFy.transferFrom(msg.sender, liquidityLocker, _amount.mul(liquidityFee).div(100));
+		shoeFy.transfer( burnAddress, _amount.mul(burnFee).div(100));
+		shoeFy.transfer( daoTreasury, _amount.mul(daoFee).div(100));
+		shoeFy.transfer( liquidityLocker, _amount.mul(liquidityFee).div(100));
 		totalStakedAmount += _amount.mul(100 - burnFee - daoFee - liquidityFee).div(100);
+		updateAPR();
 		emit Transfer(msg.sender,address(this), _amount);
         emit Deposit(msg.sender, _amount);
-        updateAPR();
+        
 	}
 	
 	function updateAPR() internal {
@@ -426,8 +431,22 @@ contract ShoeFyStaking is Ownable {
 	}
 	
 	function calculateAPR() public view returns (uint256)  {
-	   return (maxAPR - totalStakedAmount.mul(1000).div(shoeFy.totalSupply())).div(stakingUsers.length) + minAPR;
+	    if (totalUsers == 0){
+	        return initialAPR;
+	    }else{
+	        return (initialAPR - totalStakedAmount.mul(10000).div(shoeFy.totalSupply())).div(sqrt(totalUsers));    
+	    }
 	}
+	
+	function sqrt(uint x) public view returns (uint) {
+        uint z = (x + 1) / 2;
+        uint y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+        return y;
+    }
 
 	function withdrawStake(uint256 amount) public {
 		require(_hasStaked[msg.sender]);
@@ -435,9 +454,13 @@ contract ShoeFyStaking is Ownable {
 		require(amount > 0, "Hmmm, stop thinking negative... and USE A POSITIVE AMOUNT");
 		_claimEarnings(msg.sender);
 		allowed[address(this)][msg.sender] -= amount;
+		if(allowed[address(this)][msg.sender] == 0){
+		    totalUsers = totalUsers - 1;
+		}
 		userApr[msg.sender] = apr;
         shoeFy.transfer(msg.sender, amount);
 		totalStakedAmount -= amount;
+		updateAPR();
         emit Transfer(address(this), msg.sender, amount);
         emit Withdraw(msg.sender, amount);
 	}
@@ -461,7 +484,7 @@ contract ShoeFyStaking is Ownable {
 	}
 
 	function pendingRewards(address _guy) public view returns (uint256) {
-		return lastPendingReward[_guy] + (allowed[address(this)][_guy]*userApr[_guy]*(block.timestamp - lastClaim[_guy]))/3153600000;
+		return lastPendingReward[_guy] + (allowed[address(this)][_guy]*userApr[_guy]*(block.timestamp - lastClaim[_guy]))/315360000000;
 	}
 
     function getTotoalAmount() external view returns(uint256){

@@ -427,7 +427,7 @@ contract ShoeFyNFTStaking is Ownable {
 
     constructor() public {
         shoeFyNFT = IERC721(0x72DbF51BC4Dc948DA21e6790b4935521f86483D1);
-        shoeFy = IERC20 (0x8d9d3a7e26b397d3B3901b3f545A0c3776021Dff);
+        shoeFy = IERC20 (0xfBA067325d5F679D89f2933f4eA4c0158389455a);
         apr = maxAPR + minAPR;
     }
 

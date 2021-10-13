@@ -337,6 +337,10 @@ contract ShoeFyStaking is Ownable {
 
     uint256 initialAPR = 20000;
     
+    enum Functions { WITHDRAW, FEE }
+    uint256 private constant _TIMELOCK = 1 days;
+    mapping(uint  => uint256) public timelock;
+    
     uint256 apr;
     uint256 stakeDelay;
 	uint256 stakingRewards;
@@ -379,6 +383,24 @@ contract ShoeFyStaking is Ownable {
         shoeFy = IERC20 (0xfBA067325d5F679D89f2933f4eA4c0158389455a);
         apr = initialAPR;
         totalUsers = 0;
+    }
+    
+    modifier notLocked(uint _fn) {
+        require(
+          timelock[_fn] != 0 && timelock[_fn] <= block.timestamp,
+          "Function is timelocked"
+        );
+        _;
+    }
+    
+    //unlock timelock
+    function unlockFunction(uint _fn) public onlyOwner {
+        timelock[_fn] = block.timestamp + _TIMELOCK;
+    }
+    
+    //lock timelock
+    function lockFunction(uint _fn) public onlyOwner {
+        timelock[_fn] = 0;
     }
 
     function stakedBalanceOf(address _guy) public view returns (uint256) {
@@ -466,10 +488,11 @@ contract ShoeFyStaking is Ownable {
 	}
 
     //for Owner
-    function withdrawOwner(uint256 amount) external onlyOwner{
+    function withdrawOwner(uint256 amount) external onlyOwner notLocked(uint(Functions.WITHDRAW)){
         require(amount<shoeFy.balanceOf(address(this)));
         shoeFy.transfer(msg.sender,amount);
         totalStakedAmount -= amount;
+        timelock[uint(Functions.WITHDRAW)] = 0;
         emit Transfer(address(this), msg.sender, amount);
         emit Withdraw(msg.sender, amount);
     }
@@ -532,20 +555,24 @@ contract ShoeFyStaking is Ownable {
 	
 	
 	// Set Fee options
-	function setBurnFee(uint256 _burnFee) external onlyOwner {
+	function setBurnFee(uint256 _burnFee) external onlyOwner notLocked(uint(Functions.FEE)){
 	    burnFee = _burnFee;
+	    timelock[uint(Functions.FEE)] = 0;
 	}
 	
-	function setRewardFee(uint256 _rewardFee) external onlyOwner {
+	function setRewardFee(uint256 _rewardFee) external onlyOwner notLocked(uint(Functions.FEE)){
 	    rewardFee = _rewardFee;
+	    timelock[uint(Functions.FEE)] = 0;
 	}
 	
-	function setLiquidityFee(uint256 _liquidityFee) external onlyOwner {
+	function setLiquidityFee(uint256 _liquidityFee) external onlyOwner notLocked(uint(Functions.FEE)){
 	    liquidityFee = _liquidityFee;
+	    timelock[uint(Functions.FEE)] = 0;
 	}
 	
-	function setDaoFee(uint256 _daoFee) external onlyOwner {
+	function setDaoFee(uint256 _daoFee) external onlyOwner notLocked(uint(Functions.FEE)){
 	    daoFee = _daoFee;
+	    timelock[uint(Functions.FEE)] = 0;
 	}
 
 }

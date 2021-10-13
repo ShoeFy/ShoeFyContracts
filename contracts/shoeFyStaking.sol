@@ -2,32 +2,20 @@
  *Submitted for verification at Etherscan.io on 2021-05-31
 */
 
-pragma solidity >=0.6.0;
+pragma solidity >=0.5.0;
 
 
 interface IERC20 {
    
     function totalSupply() external view returns (uint256);
-
-  
     function balanceOf(address account) external view returns (uint256);
-
-    
     function transfer(address recipient, uint256 amount) external returns (bool);
     function transferWithoutDeflationary(address recipient, uint256 amount) external returns (bool) ;
-   
     function allowance(address owner, address spender) external view returns (uint256);
-
-    
     function approve(address spender, uint256 amount) external returns (bool);
-
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool); 
     
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
-    
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    
+    event Transfer(address indexed from, address indexed to, uint256 value); 
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
@@ -238,11 +226,11 @@ contract Context {
   
     constructor () internal { }
 
-    function _msgSender() internal view virtual returns (address payable) {
+    function _msgSender() internal view returns (address payable) {
         return msg.sender;
     }
 
-    function _msgData() internal view virtual returns (bytes memory) {
+    function _msgData() internal view returns (bytes memory) {
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
         return msg.data;
     }
@@ -300,7 +288,7 @@ contract Ownable is Context {
      * NOTE: Renouncing ownership will leave the contract without an owner,
      * thereby removing any functionality that is only available to the owner.
      */
-    function renounceOwnership() public virtual onlyOwner {
+    function renounceOwnership() public onlyOwner {
         emit OwnershipTransferred(_owner, address(0));
         _owner = address(0);
     }
@@ -309,14 +297,14 @@ contract Ownable is Context {
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(address newOwner) public onlyOwner {
         _transferOwnership(newOwner);
     }
 
     /**
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      */
-    function _transferOwnership(address newOwner) internal virtual {
+    function _transferOwnership(address newOwner) internal {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
@@ -478,6 +466,8 @@ contract ShoeFyStaking is Ownable {
 		allowed[address(this)][msg.sender] -= amount;
 		if(allowed[address(this)][msg.sender] == 0){
 		    totalUsers = totalUsers - 1;
+		    removeStakingUser(msg.sender);
+		    _hasStaked[msg.sender] = false;
 		}
 		userApr[msg.sender] = apr;
         shoeFy.transfer(msg.sender, amount);
@@ -485,6 +475,28 @@ contract ShoeFyStaking is Ownable {
 		updateAPR();
         emit Transfer(address(this), msg.sender, amount);
         emit Withdraw(msg.sender, amount);
+	}
+	
+	
+	function removeStakingUser(address _guy) internal {
+	    uint256 length = stakingUsers.length;
+	    bool isUser = false;
+	    uint arrIndex = 0;
+	    for(uint256 index = 0; index < length; ++index) {
+	        if(stakingUsers[index] == _guy){
+	            isUser = true;
+	            arrIndex = index;
+	            break;
+	        }
+	    }
+	    
+	    stakingUsers[arrIndex] = stakingUsers[stakingUsers.length-1];
+	    delete stakingUsers[stakingUsers.length-1]; // Implicitly recovers gas from last element storage
+        stakingUsers.length--;
+	}
+	
+	function getStakedUsers() public view returns(uint256){
+	    return stakingUsers.length;
 	}
 
     //for Owner
@@ -531,7 +543,6 @@ contract ShoeFyStaking is Ownable {
 		}
 	}
 
-
     function totalStaked() public view returns (uint256) {
 		return totalStakedAmount;
 	}
@@ -574,5 +585,4 @@ contract ShoeFyStaking is Ownable {
 	    daoFee = _daoFee;
 	    timelock[uint(Functions.FEE)] = 0;
 	}
-
 }

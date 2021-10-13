@@ -527,6 +527,10 @@ contract ShoeFyNFTStaking is Ownable {
         shoeFyNFT.transferFrom(address(this), msg.sender, tokenId);
         removeAssetFromArray(msg.sender, tokenId);
 		totalStakedAmount -= 1;
+		if(userAssets[msg.sender].length == 0){
+		    removeStakingUser(msg.sender);
+		    _hasStaked[msg.sender] = false;
+		}
         emit Transfer(address(this), msg.sender, tokenId);
         emit Withdraw(msg.sender, tokenId);
 	}
@@ -546,9 +550,22 @@ contract ShoeFyNFTStaking is Ownable {
       userAssets[_guy].length--;
     }
     
-    function testRemoveAssetIndexFromArray(address _guy) public {
-      delete userAssets[_guy][userAssets[_guy].length-1]; // Implicitly recovers gas from last element storage
-    }
+    function removeStakingUser(address _guy) internal {
+	    uint256 length = stakingUsers.length;
+	    bool isUser = false;
+	    uint arrIndex = 0;
+	    for(uint256 index = 0; index < length; ++index) {
+	        if(stakingUsers[index] == _guy){
+	            isUser = true;
+	            arrIndex = index;
+	            break;
+	        }
+	    }
+	    
+	    stakingUsers[arrIndex] = stakingUsers[stakingUsers.length-1];
+	    delete stakingUsers[stakingUsers.length-1]; // Implicitly recovers gas from last element storage
+        stakingUsers.length--;
+	}
     
     function isNFTOwner(address _guy, uint256 tokenId) public view returns (bool){
         bool isOwner = false;
